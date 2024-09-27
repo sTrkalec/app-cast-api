@@ -11,9 +11,16 @@ import { AllExceptionsService } from './common/all-exceptions/all-exceptions.ser
 import { SuccessExceptionsModule } from './common/success-exceptions/success-exceptions.module';
 import { LoginModule } from './login/login.module';
 import { JwtMiddleware } from './jwtMiddleware';
+import { PatientsModule } from './patients/patients.module';
 
 @Module({
-  imports: [PrismaModule, DoctorsModule, SuccessExceptionsModule, LoginModule],
+  imports: [
+    PrismaModule,
+    DoctorsModule,
+    SuccessExceptionsModule,
+    LoginModule,
+    PatientsModule,
+  ],
   providers: [
     {
       provide: APP_FILTER,
@@ -28,6 +35,7 @@ export class AppModule implements NestModule {
       .exclude(
         { path: '/login', method: RequestMethod.ALL },
         { path: '/doctors', method: RequestMethod.POST },
+        { path: '/patients', method: RequestMethod.POST },
       )
       .forRoutes('*');
   }

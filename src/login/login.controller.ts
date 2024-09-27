@@ -11,9 +11,4 @@ export class LoginController {
   login(@Body() createLoginDto: CreateLoginDto, @Res() res: Response) {
     return this.loginService.loginDoctor(createLoginDto, res);
   }
-
-  @Post('patient')
-  loginPatient(@Body() createLoginDto: CreateLoginDto) {
-    return this.loginService.loginPatient(createLoginDto);
-  }
 }

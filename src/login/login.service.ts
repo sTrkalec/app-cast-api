@@ -16,11 +16,19 @@ export class LoginService {
   async loginDoctor(createLoginDto: CreateLoginDto, res: Response) {
     const { email, password } = createLoginDto;
 
-    const user = await this.prismaService.doctor.findUnique({
+    const doctor = await this.prismaService.doctor.findUnique({
       where: {
         email,
       },
     });
+
+    const user = doctor
+      ? doctor
+      : await this.prismaService.patient.findUnique({
+          where: {
+            email,
+          },
+        });
 
     if (!user) {
       throw new HttpException(
@@ -42,24 +50,19 @@ export class LoginService {
       userId: user.id,
       name: user.name,
       email: user.email,
+      isDoctor: !!doctor,
+    };
+
+    const responseObj = {
+      token: this.jwtService.sign(payload),
+      isDoctor: !!doctor,
     };
 
     return this.success.successResponse(
       res,
-      'Doctor logged in successfully',
+      'User logged in successfully',
       HttpStatus.OK,
-      this.jwtService.sign(payload),
+      responseObj,
     );
-  }
-
-  loginPatient(createLoginDto: CreateLoginDto) {
-    return this.prismaService.patient.findFirst({
-      where: {
-        AND: [
-          { email: createLoginDto.email },
-          { password: createLoginDto.password },
-        ],
-      },
-    });
   }
 }

@@ -21,16 +21,27 @@ model Doctor {
   prescriptions Prescription[] // Relationship with Prescriptions
   email         String         @unique
   password      String // Encrypted password
+  Schedule      Schedule[]
 }
 
 model Patient {
   id            String         @id @default(uuid())
   name          String
   age           Int
-  appointments  Appointment[] // Relationship with Appointments
-  prescriptions Prescription[] // Relationship with Prescriptions
+  appointments  Appointment[]
+  prescriptions Prescription[]
   email         String         @unique
   password      String // Encrypted password
+  isPremium     Boolean        @default(false) // Campo novo
+}
+
+model Schedule {
+  id        String          @id @default(uuid())
+  doctorId  String
+  doctor    Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  endTime   DateTime
+  status    STATUS_SCHEDULE @default(DISPONIVEL)
 }
 
 model Appointment {
@@ -41,6 +52,7 @@ model Appointment {
   patientId   String
   doctor      Doctor   @relation(fields: [doctorId], references: [id])
   patient     Patient  @relation(fields: [patientId], references: [id])
+  status      STATUS // "pendente", "confirmado", "cancelado"
 }
 
 model Prescription {
@@ -58,4 +70,16 @@ model blacklist {
   email     String
   token     String   @unique
   timestamp DateTime @default(now())
+}
+
+enum STATUS {
+  PENDENTE
+  CONFIRMADO
+  CANCELADO
+}
+
+enum STATUS_SCHEDULE {
+  DISPONIVEL
+  OCUPADO
+  CANCELADO
 }
