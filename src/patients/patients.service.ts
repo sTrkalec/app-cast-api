@@ -6,12 +6,14 @@ import { SuccessExceptionsService } from 'src/common/success-exceptions/success-
 import { RequestMiddleware } from 'src/jwtMiddleware';
 import { compare, hash } from 'bcrypt';
 import { Response } from 'express';
+import { DoctorsService } from 'src/doctors/doctors.service';
 
 @Injectable()
 export class PatientsService {
   constructor(
     private prismaService: PrismaService,
     private success: SuccessExceptionsService,
+    private doctorService: DoctorsService,
   ) {}
 
   async findById(req: RequestMiddleware) {
@@ -23,6 +25,7 @@ export class PatientsService {
           id: true,
           name: true,
           email: true,
+          gender: true,
           appointments: {},
           prescriptions: {},
           age: true,
@@ -54,8 +57,8 @@ export class PatientsService {
   async create(createPatientDto: CreatePatientDto, res: Response) {
     try {
       // Verificar se todos os campos obrigatórios estão presentes
-      const { name, age, email, password } = createPatientDto;
-      if (!name || !age || !email || !password) {
+      const { name, age, email, password, gender } = createPatientDto;
+      if (!name || !age || !email || !password || !gender) {
         throw new HttpException(
           'Missing required fields',
           HttpStatus.BAD_REQUEST,
@@ -82,6 +85,7 @@ export class PatientsService {
         data: {
           name,
           age,
+          gender,
           email,
           password: hashedPassword,
         },
@@ -113,9 +117,9 @@ export class PatientsService {
     try {
       const { userId } = req.user;
       const { oldPassword, newPassword, ...updateData } = updatePatientDto;
-      const { name, age } = updateData;
+      const { name, age, gender } = updateData;
 
-      if (!age && !name && !(newPassword && oldPassword)) {
+      if (!age && !name && !gender && !(newPassword && oldPassword)) {
         throw new HttpException(
           'Missing required fields',
           HttpStatus.BAD_REQUEST,
@@ -217,6 +221,7 @@ export class PatientsService {
 
   async findDoctorsAvailable(req: RequestMiddleware) {
     try {
+      this.doctorService.verifySchedule();
       const doctors = await this.prismaService.doctor.findMany({
         where: { Schedule: { some: { status: 'DISPONIVEL' } } },
         select: {

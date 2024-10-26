@@ -31,10 +31,12 @@ export class JwtMiddleware implements NestMiddleware {
       const token = authHeader.substring(7); // Remove 'Bearer ' prefix
       try {
         const decoded = this.jwtService.verify(token);
-        // Verifica se o token ou usuário está na blacklist
 
         const isBlacklisted = await this.prismaService.blacklist.findUnique({
-          where: { token: 'Bearer ' + token }, // ou { email: decoded.email } se a blacklist for por email
+          where: {
+            token: 'Bearer ' + token,
+            id: decoded.userId,
+          },
         });
 
         if (isBlacklisted) {
@@ -43,7 +45,7 @@ export class JwtMiddleware implements NestMiddleware {
         req.user = decoded;
         next();
       } catch (error) {
-        throw new UnauthorizedException('Token JWT inválido ou expirado');
+        throw new UnauthorizedException(error);
       }
     } else {
       throw new UnauthorizedException('Token JWT não fornecido');

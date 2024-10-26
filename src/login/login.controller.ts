@@ -9,6 +9,6 @@ export class LoginController {
 
   @Post()
   login(@Body() createLoginDto: CreateLoginDto, @Res() res: Response) {
-    return this.loginService.loginDoctor(createLoginDto, res);
+    return this.loginService.login(createLoginDto, res);
   }
 }

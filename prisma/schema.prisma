@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,10 +11,12 @@ model Doctor {
   id            String         @id @default(uuid())
   name          String
   specialty     String
-  appointments  Appointment[] // Relationship with Appointments
-  prescriptions Prescription[] // Relationship with Prescriptions
   email         String         @unique
-  password      String // Encrypted password
+  password      String
+  age           Int
+  gender        GENDER
+  appointments  Appointment[]
+  prescriptions Prescription[]
   Schedule      Schedule[]
 }
 
@@ -28,20 +24,21 @@ model Patient {
   id            String         @id @default(uuid())
   name          String
   age           Int
+  gender        GENDER
+  email         String         @unique
+  password      String
+  isPremium     Boolean        @default(false)
   appointments  Appointment[]
   prescriptions Prescription[]
-  email         String         @unique
-  password      String // Encrypted password
-  isPremium     Boolean        @default(false) // Campo novo
 }
 
 model Schedule {
   id        String          @id @default(uuid())
   doctorId  String
-  doctor    Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   startTime DateTime
   endTime   DateTime
   status    STATUS_SCHEDULE @default(DISPONIVEL)
+  doctor    Doctor          @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 }
 
 model Appointment {
@@ -50,9 +47,9 @@ model Appointment {
   description String?
   doctorId    String
   patientId   String
+  status      STATUS
   doctor      Doctor   @relation(fields: [doctorId], references: [id])
   patient     Patient  @relation(fields: [patientId], references: [id])
-  status      STATUS // "pendente", "confirmado", "cancelado"
 }
 
 model Prescription {
@@ -60,9 +57,9 @@ model Prescription {
   description String
   doctorId    String
   patientId   String
+  validity    DateTime
   doctor      Doctor   @relation(fields: [doctorId], references: [id])
   patient     Patient  @relation(fields: [patientId], references: [id])
-  validity    DateTime
 }
 
 model blacklist {
@@ -82,4 +79,11 @@ enum STATUS_SCHEDULE {
   DISPONIVEL
   OCUPADO
   CANCELADO
+  EXPIRADO
+}
+
+enum GENDER {
+  MASCULINO
+  FEMININO
+  OUTRO
 }

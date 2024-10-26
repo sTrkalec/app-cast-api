@@ -12,6 +12,7 @@ import { SuccessExceptionsModule } from './common/success-exceptions/success-exc
 import { LoginModule } from './login/login.module';
 import { JwtMiddleware } from './jwtMiddleware';
 import { PatientsModule } from './patients/patients.module';
+import { AuthController } from './auth/auth.controller';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PatientsModule } from './patients/patients.module';
       useClass: AllExceptionsService,
     },
   ],
+  controllers: [AuthController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -36,6 +38,7 @@ export class AppModule implements NestModule {
         { path: '/login', method: RequestMethod.ALL },
         { path: '/doctors', method: RequestMethod.POST },
         { path: '/patients', method: RequestMethod.POST },
+        { path: '/auth', method: RequestMethod.GET },
       )
       .forRoutes('*');
   }

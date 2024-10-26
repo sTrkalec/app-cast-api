@@ -13,7 +13,7 @@ export class LoginService {
     private prismaService: PrismaService,
     private success: SuccessExceptionsService,
   ) {}
-  async loginDoctor(createLoginDto: CreateLoginDto, res: Response) {
+  async login(createLoginDto: CreateLoginDto, res: Response) {
     const { email, password } = createLoginDto;
 
     const doctor = await this.prismaService.doctor.findUnique({
@@ -56,6 +56,7 @@ export class LoginService {
     const responseObj = {
       token: this.jwtService.sign(payload),
       isDoctor: !!doctor,
+      name: user.name,
     };
 
     return this.success.successResponse(

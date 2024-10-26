@@ -33,6 +33,11 @@ export class AllExceptionsService implements ExceptionFilter {
             status = HttpStatus.NOT_FOUND;
             message = 'This field does not exist';
             break;
+
+          case 'P2022':
+            status = HttpStatus.NOT_FOUND;
+            message = 'The specified field does not exist in the database';
+            break;
         }
       }
     }

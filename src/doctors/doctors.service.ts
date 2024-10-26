@@ -7,7 +7,14 @@ import { Response } from 'express';
 import { SuccessExceptionsService } from 'src/common/success-exceptions/success-exceptions.service';
 import { RequestMiddleware } from 'src/jwtMiddleware';
 import { CreateSchuleDto } from './dto/create-schedule.dto';
-import { addMinutes, parseISO, isPast, isValid } from 'date-fns';
+import {
+  addMinutes,
+  parseISO,
+  isPast,
+  isValid,
+  addHours,
+  isBefore,
+} from 'date-fns';
 import { DoctorSchedules, ScheduleDetails } from './@types/doctor-schedules';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { STATUS_SCHEDULE } from '@prisma/client';
@@ -19,26 +26,28 @@ export class DoctorsService {
     private success: SuccessExceptionsService,
   ) {}
 
-  async verifySchedule(userId: string) {
-    // Primeiro, buscar e excluir todas as agendas passadas e disponíveis
-    const schedulesToDelete = await this.prismaService.schedule.findMany({
+  async verifySchedule() {
+    // Pega o horário UTC atual e ajusta para o horário de Brasília
+    const nowBrasilia = addMinutes(new Date(), -3); // Ajusta para o horário de Brasília
+    const schedulesToUpdate = await this.prismaService.schedule.findMany({
       where: {
-        doctorId: userId,
-        status: STATUS_SCHEDULE.DISPONIVEL,
-        endTime: {
-          lt: new Date(), // 'lt' significa 'less than'
-        },
+        status: 'DISPONIVEL',
+        startTime: { lte: nowBrasilia },
       },
       select: {
         id: true,
+        startTime: true,
       },
     });
 
-    // Excluir as agendas identificadas
-    for (const schedule of schedulesToDelete) {
-      await this.prismaService.schedule.delete({
-        where: { id: schedule.id },
-      });
+    if (schedulesToUpdate.length > 0) {
+      for (const schedule of schedulesToUpdate) {
+        if (isPast(schedule.startTime)) {
+          await this.prismaService.schedule.delete({
+            where: { id: schedule.id },
+          });
+        }
+      }
     }
   }
 
@@ -46,21 +55,23 @@ export class DoctorsService {
     try {
       const { userId } = req.user;
 
-      // Verificar se o médico tem agendas passadas e disponíveis
-      await this.verifySchedule(userId);
-      // Buscar as informações atualizadas do médico
       const doctor = await this.prismaService.doctor.findUnique({
         where: { id: userId },
         select: {
           id: true,
           name: true,
           specialty: true,
+          gender: true,
           email: true,
           appointments: true,
           prescriptions: true,
           Schedule: { orderBy: { startTime: 'asc' } },
         },
       });
+
+      if (!doctor) {
+        throw new HttpException('doctor not found', HttpStatus.NOT_FOUND);
+      }
 
       return this.success.successResponse(
         req.res,
@@ -83,8 +94,9 @@ export class DoctorsService {
   async create(createDoctorDto: CreateDoctorDto, res: Response) {
     try {
       // Verificar se todos os campos obrigatórios estão presentes
-      const { name, specialty, email, password } = createDoctorDto;
-      if (!name || !specialty || !email || !password) {
+      const { name, specialty, email, password, gender, age } = createDoctorDto;
+
+      if (!name || !specialty || !email || !password || !gender || !age) {
         throw new HttpException(
           'Missing required fields',
           HttpStatus.BAD_REQUEST,
@@ -111,6 +123,8 @@ export class DoctorsService {
         data: {
           name,
           specialty,
+          age,
+          gender,
           email,
           password: hashedPassword,
         },
@@ -227,22 +241,19 @@ export class DoctorsService {
   }
 
   async remove(req: RequestMiddleware, res: Response) {
-    console.log('chamou');
-
-    console.log(req.user.userId);
     try {
       await this.prismaService.doctor.delete({
         where: { id: req.user.userId },
       });
 
-      await this.prismaService.blacklist.create({
+      const data = await this.prismaService.blacklist.create({
         data: {
           token: req.headers.authorization,
           email: req.user.email,
           id: req.user.userId,
         },
       });
-
+      console.log(data);
       return this.success.successResponse(
         res,
         'Doctor deleted successfully',
@@ -280,17 +291,25 @@ export class DoctorsService {
       end: string,
       duration: number,
     ) => {
-      let times: ScheduleDetails[] = [];
+      const times: ScheduleDetails[] = [];
       let startTime = parseISO(`${date}T${start}:00Z`);
-      let endTime = parseISO(`${date}T${end}:00Z`);
+      const endTime = parseISO(`${date}T${end}:00Z`);
 
       // Criar horários para o período especificado
 
       if (!isValid(startTime) || !isValid(endTime))
         throw new HttpException('Invalid date', HttpStatus.BAD_REQUEST);
 
+      const now = addHours(new Date(), -3); // Ajusta para o horário de Brasília
+      if (isBefore(startTime, now)) {
+        throw new HttpException(
+          'Date must be in the present or future',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       while (startTime < endTime) {
-        let nextTime = addMinutes(startTime, duration);
+        const nextTime = addMinutes(startTime, duration);
         if (nextTime > endTime) break;
 
         // Verificar conflitos antes de criar
@@ -327,7 +346,7 @@ export class DoctorsService {
     };
 
     try {
-      let schedules: DoctorSchedules = {};
+      const schedules: DoctorSchedules = {};
 
       // Criar horários para manhã, se fornecidos
       if (morningStartTime && morningEndTime) {
